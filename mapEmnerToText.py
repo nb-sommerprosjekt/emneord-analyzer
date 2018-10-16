@@ -1,6 +1,6 @@
 import os
 from collections import Counter
-
+from sklearn.preprocessing import MultiLabelBinarizer
 def traverseBokDir(dirPath):
     print("Henter inn stier til bøker")
     filePaths = []
@@ -40,7 +40,9 @@ def getAllEmner(path):
                                                 antall_emner +=1
                                                 line = line.replace("TOPIC:", "")
                                                 line = line.replace("\n", "")
-                                                emne_ordliste_liste.append(line.split(","))
+                                                emner = line.split(",")
+                                                emner = [x.lower() for x in emner]
+                                                emne_ordliste_liste.append(emner)
     emneordliste_og_path = zip(file_paths, emne_ordliste_liste)
     return list(emneordliste_og_path)
 def getListOfEmnerAndFrequency(emnerOgPathList, minFreq = 0):
@@ -49,7 +51,7 @@ def getListOfEmnerAndFrequency(emnerOgPathList, minFreq = 0):
     for element in emnerOgPathList:
         for emne in element[1]:
            if len(emne)>1:
-               emner.append(emne.lower())
+               emner.append(emne.lower().strip())
     count = Counter(emner)
     emner, freq = count.keys(), count.values()
     emnerOgFreq = list(zip(emner,freq))
@@ -93,32 +95,41 @@ def filterEmner(emner_og_fil_liste, emnerOfChoice, numEmnerPerFile):
        tempEmner = []
        for emne in f[1]:
            if emne.lower() in emnerOfChoice:
-               tempEmner.append(emne.strip())
+               tempEmner.append(emne.strip().lower())
        newEmneOgFilListe.append([f[0],tempEmner])
     
     newEmneOgFilListe = [x for x in newEmneOgFilListe if len(x[1])>=numEmnerPerFile]
     return newEmneOgFilListe
     
-
+def transformLabels(emnerOgFilListe, classes):
+    print("transformerer labels til multilabelformat")   
+    emner =[x[1] for x in emnerOgFilListe]
+    with open("emner.txt","w") as f:
+        for x in emner:
+            f.write(str(x) + "\n")
+    with open("classes.txt", "w") as f:
+        for x in classes:
+            f.write(x + "\n")
+    print(emner)
+    mlb = MultiLabelBinarizer(classes = classes)
+    emner_binarized = mlb.fit_transform(emner)
+    print(emner_binarized)
+    print(list(emner_binarized.classes_))
+    return emner_binarized, emner_binarized.classes_
 if __name__ == '__main__':
     bokDir = "/disk1/bokhylla"
     bokEmnerDir = "/disk1/bokhylla/emneUttrekk"
-#    topp_emnefil = "/disk1/emneord_analyse/min5over40frekvens.txt"
-#    liste_over_top_emner = "/disk1/emneord_analyse/emnerMedOver40iFrekvens_sortert.txt"
 
     # Lager dictionary over alle paths til alle bøker, dict[basename] = {filepath :" ", filename : "" }
     txtDict = traverseBokDir(bokDir)
-   
-#    # Lager dictionary over alle paths til alle emnefiler, dict[basename] = {filepath :" ", filename : "" }
-#    emneDict = parseListeOverEmneFiler(topp_emnefil)
-   
+      
     # Henter inn alle emnerordene og filnavn. Liste[0] = [filnavn,[emner]]
     emnerOgFilpaths = getAllEmner(bokEmnerDir)
-    
+
     # Lager liste over alle emneFiler
     emneFilePaths = [x[0] for x in emnerOgFilpaths]
 
-  # Lager dictionary over alle paths til alle emnefiler, dict[basename] = {filepath :" ", filename : "" }
+    # Lager dictionary over alle paths til alle emnefiler, dict[basename] = {filepath :" ", filename : "" }
     emneDict = makeEmneDict(emneFilePaths)
     
     # Finner ut frekvens av hvert emne, og gir ut en sortert liste av tupler med [emne, frekvens]. 
@@ -127,8 +138,8 @@ if __name__ == '__main__':
     # Henter ut liste over alle emner på topplisten. Sortert med frekvens.
     liste_over_top_emner = [x[0].lower() for x in emnerOgFrekvens]   
     #print(liste_over_top_emner)
-    
 
+ 
     # Lager ny liste over Emneordfiler + emneord der kun emneord som er med i 40 eller flere docs blir beholdt.
     # Alle dokumenter med mindre enn 5 emner blir også fjernet
     # output: list[0] = [emnefilpath, [emne1, emne2,emne3]]
@@ -139,9 +150,9 @@ if __name__ == '__main__':
 
    # new_topList = getListOfEmnerAndFrequency(emnerOgFilpaths,40)
    # print(len(new_topList))
-    print(len(liste_over_top_emner))
+    print("Antall top emner: "+ str(len(liste_over_top_emner)))
     print("Antall filer opprinnelig: "+ str(len(emnerOgFilpaths)))
    # print(emnerOgFilpath[0])
     print("Antall filer med 5 eller flere popular emner: " + str(len(newEmnerOgFilPath)))
    # print(newEmnerOgFilPath)    
- 
+    transformLabels(newEmnerOgFilPath,liste_over_top_emner)
