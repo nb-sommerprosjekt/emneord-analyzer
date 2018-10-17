@@ -1,6 +1,7 @@
 import os
 from collections import Counter
 from sklearn.preprocessing import MultiLabelBinarizer
+import pandas as pd
 def traverseBokDir(dirPath):
     print("Henter inn stier til bøker")
     filePaths = []
@@ -101,21 +102,24 @@ def filterEmner(emner_og_fil_liste, emnerOfChoice, numEmnerPerFile):
     newEmneOgFilListe = [x for x in newEmneOgFilListe if len(x[1])>=numEmnerPerFile]
     return newEmneOgFilListe
     
-def transformLabels(emnerOgFilListe, classes):
+def transformLabels(emnerOgFilListe, label_list):
     print("transformerer labels til multilabelformat")   
     emner =[x[1] for x in emnerOgFilListe]
-    with open("emner.txt","w") as f:
-        for x in emner:
-            f.write(str(x) + "\n")
-    with open("classes.txt", "w") as f:
-        for x in classes:
-            f.write(x + "\n")
-    print(emner)
-    mlb = MultiLabelBinarizer(classes = classes)
+
+    mlb = MultiLabelBinarizer(classes = label_list)
     emner_binarized = mlb.fit_transform(emner)
-    print(emner_binarized)
-    print(list(emner_binarized.classes_))
-    return emner_binarized, emner_binarized.classes_
+#    print(list(mlb.classes_))
+#    print(len(list(mlb.classes_)))
+    return emner_binarized, mlb.classes_
+def makeEmneCsv(binarized_emner, class_list):
+    panda_dict = {}
+    for class_enum in list(enumerate(class_list)):
+        vals = []
+        for vec in binarized_emner:
+            vals.append(vec[class_enum[0]])
+        panda_dict[class_enum[1]]=vals
+    df = pd.DataFrame.from_dict(panda_dict)
+    df.to_csv("labels.csv")
 if __name__ == '__main__':
     bokDir = "/disk1/bokhylla"
     bokEmnerDir = "/disk1/bokhylla/emneUttrekk"
@@ -154,5 +158,8 @@ if __name__ == '__main__':
     print("Antall filer opprinnelig: "+ str(len(emnerOgFilpaths)))
    # print(emnerOgFilpath[0])
     print("Antall filer med 5 eller flere popular emner: " + str(len(newEmnerOgFilPath)))
-   # print(newEmnerOgFilPath)    
-    transformLabels(newEmnerOgFilPath,liste_over_top_emner)
+   # print(newEmnerOgFilPath)
+    # Transformerer labels til binarized format    
+    emner_binarized, classes = transformLabels(newEmnerOgFilPath,liste_over_top_emner)
+    # Lager csv-fil der label er kolonne-tittel og alle oppføringene under er oppforingene binary 
+    makeEmneCsv(emner_binarized, classes)

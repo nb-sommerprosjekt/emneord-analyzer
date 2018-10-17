@@ -1,2 +1,4 @@
+.gitignore
 div/*
 *.txt
+*.csv
