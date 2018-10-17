@@ -111,15 +111,30 @@ def transformLabels(emnerOgFilListe, label_list):
 #    print(list(mlb.classes_))
 #    print(len(list(mlb.classes_)))
     return emner_binarized, mlb.classes_
-def makeEmneCsv(binarized_emner, class_list):
+def makeEmneDataframe(binarized_emner, class_list,matchedTxtsOgEmnelist):
+    print("Legger data i dataframe")
     panda_dict = {}
+    emnepaths = [x[1] for x in matchedTxtsOgEmnelist]
+    txtpaths = [x[0] for x in matchedTxtsOgEmnelist]
+    panda_dict["txtpath"] = txtpaths
+    panda_dict["emnefilpath"] = emnepaths
+    emne_dict = {}
     for class_enum in list(enumerate(class_list)):
         vals = []
         for vec in binarized_emner:
             vals.append(vec[class_enum[0]])
         panda_dict[class_enum[1]]=vals
     df = pd.DataFrame.from_dict(panda_dict)
-    df.to_csv("labels.csv")
+    return df
+#    df.to_csv("labels.csv")
+def mapEmnerToText(txtDict,emnefilpaths):
+    matched_txts = []   
+    for emnepath in emnefilpaths:
+       emnepath_basename = os.path.basename(emnepath).replace(".emner","")
+       if emnepath_basename in txtDict:
+           matched_txts.append((txtDict[emnepath_basename]["path"], emnepath))
+    print("Mapper emner til text")
+    return matched_txts
 if __name__ == '__main__':
     bokDir = "/disk1/bokhylla"
     bokEmnerDir = "/disk1/bokhylla/emneUttrekk"
@@ -151,9 +166,9 @@ if __name__ == '__main__':
     
     print("lengde av txtpaths: "+str(len(txtDict.keys())))
     print("lengde av emnepaths: "+str(len(emneDict.keys())))
-
-   # new_topList = getListOfEmnerAndFrequency(emnerOgFilpaths,40)
-   # print(len(new_topList))
+    
+    emnepaths = [x[0] for x in newEmnerOgFilPath]
+    matchedTxtEmner =  mapEmnerToText(txtDict, emnepaths)
     print("Antall top emner: "+ str(len(liste_over_top_emner)))
     print("Antall filer opprinnelig: "+ str(len(emnerOgFilpaths)))
    # print(emnerOgFilpath[0])
@@ -162,4 +177,11 @@ if __name__ == '__main__':
     # Transformerer labels til binarized format    
     emner_binarized, classes = transformLabels(newEmnerOgFilPath,liste_over_top_emner)
     # Lager csv-fil der label er kolonne-tittel og alle oppføringene under er oppforingene binary 
-    makeEmneCsv(emner_binarized, classes)
+    emne_df = makeEmneDataframe(emner_binarized, classes, matchedTxtEmner)
+    
+    # Legger til paths til emnefiler i dataframe
+   # print("legger til emnepaths i dataframe")
+  #  emnepaths  = [x[0] for x in newEmnerOgFilPath]
+  #  emne_df["emnefilpath"] =emnepaths
+    print("printer ut csv med emner og filpaths")
+    emne_df.to_csv("new_label_og_filpath.csv") 
